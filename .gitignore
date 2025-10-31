@@ -1,3 +1,5 @@
 .env
 __pycache__/
 .mcp_cache/
+.venv/
+*.log
