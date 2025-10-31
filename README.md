@@ -10,6 +10,7 @@ It is inspired by the shared internal MCP server but ships with only the Faceboo
 - List, download, and upload Google Drive files via `/google-drive/*` endpoints.
 - Serve combined static + local operator instructions through `/ui/instructions` (HTML) and `/api/instructions` (JSON).
 - Browse local reference documents under `DOCS_ROOT` via `/local-docs/*` endpoints.
+- Explore Amministrazione Trasparente sections for Comune di Bonate Sotto with `/bonatesotto/transparency/*`.
 - Simple health-check endpoint available at `GET /health`.
 
 ## Getting Started
@@ -47,6 +48,8 @@ All settings can be provided through `.env` or the environment:
 | `FACEBOOK_DEFAULT_FEED_LIMIT` | Default feed page size (default `25`, max `100`). |
 | `FACEBOOK_ENABLE_DEBUG` | Set to `true` to enable verbose logging for troubleshooting. |
 | `DOCS_ROOT` | Absolute path to the local documentation directory exposed via `/local-docs/*`. |
+| `BONATE_BASE_URL` | Base URL for the Bonate Sotto institutional website (default `https://www.comune.bonatesotto.bg.it`). |
+| `BONATE_TIMEOUT` | Timeout in seconds for Bonate Sotto HTTP requests (default `15`). |
 | `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` | Path to the JSON key for a Google service account with Drive access. |
 | `GOOGLE_DRIVE_DELEGATED_USER` | Optional user to impersonate when using domain-wide delegation. |
 | `GOOGLE_DRIVE_SCOPES` | JSON array of Drive scopes (default `["https://www.googleapis.com/auth/drive"]`). |
@@ -113,7 +116,23 @@ Read a markdown file from docs:
 curl "http://127.0.0.1:8000/local-docs/file?path=guides/readme.md"
 ```
 
+List transparency sections:
+```bash
+curl "http://127.0.0.1:8000/bonatesotto/transparency/sections?q=provvedimenti"
+```
+
+Search within a transparency section:
+```bash
+curl -X POST http://127.0.0.1:8000/bonatesotto/transparency/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "section_url": "https://www.comune.bonatesotto.bg.it/EG0/EGSCHTST52.HBL?en=eg745&MESSA=PUBBLICA&SRL=86",
+    "query": "delibera",
+    "limit": 3
+  }'
+```
+
 ## Development Notes
 - The `.mcp_cache` directory is automatically created to mirror the structure of the original MCP server.
 - To run the application in production, consider invoking `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
-- The project bundles Facebook, Google Drive, and local docs connectors; additional integrations can be added following the same patterns.
+- The project bundles Facebook, Google Drive, local docs, and Bonate Sotto transparency helpers; additional integrations can be added following the same patterns.

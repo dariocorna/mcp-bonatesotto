@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import AnyHttpUrl, BaseModel, Field, HttpUrl
 
 
 class HealthResponse(BaseModel):
@@ -207,3 +207,41 @@ class GoogleDriveUploadResponse(BaseModel):
     """Response payload returned after uploading a file to Drive."""
 
     file: Dict[str, Any]
+
+
+class BonateTransparencySection(BaseModel):
+    """Single entry within the Amministrazione Trasparente navigation."""
+
+    category: str = Field(..., description="Categoria principale della sezione.")
+    name: str = Field(..., description="Titolo della sotto-sezione.")
+    url: AnyHttpUrl = Field(..., description="URL assoluto della sezione.")
+
+
+class BonateTransparencySectionsResponse(BaseModel):
+    """Response listing the available transparency sections."""
+
+    sections: List[BonateTransparencySection] = Field(default_factory=list)
+
+
+class BonateTransparencySearchRequest(BaseModel):
+    """Request payload to search inside a transparency section."""
+
+    section_url: AnyHttpUrl = Field(
+        ...,
+        description="URL della sezione Egò da consultare.",
+    )
+    query: str = Field(..., min_length=1, description="Testo da ricercare all'interno della sezione.")
+    limit: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Numero massimo di risultati di contesto da restituire.",
+    )
+
+
+class BonateTransparencySearchResponse(BaseModel):
+    """Snippets extracted from the raw section text."""
+
+    section_url: AnyHttpUrl = Field(..., description="Sezione su cui è stata effettuata la ricerca.")
+    query: str = Field(..., description="Testo ricercato.")
+    hits: List[str] = Field(default_factory=list, description="Estratti di testo che contengono la query.")

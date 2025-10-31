@@ -9,6 +9,14 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 
+from .bonatesotto_client import (
+    BonateSottoError,
+    BonateSottoParsingError,
+    BonateSottoRequestError,
+    TransparencySection,
+    list_transparency_sections,
+    search_section_text,
+)
 from .facebook_client import (
     FacebookConfigError,
     FacebookRequestError,
@@ -42,6 +50,10 @@ from .models import (
     GoogleDriveDownloadResponse,
     GoogleDriveListFilesRequest,
     GoogleDriveListFilesResponse,
+    BonateTransparencySearchRequest,
+    BonateTransparencySearchResponse,
+    BonateTransparencySectionsResponse,
+    BonateTransparencySection,
     GoogleDriveUploadRequest,
     GoogleDriveUploadResponse,
     HealthResponse,
@@ -98,6 +110,17 @@ def _handle_docs_exception(exc: Exception) -> None:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     if isinstance(exc, LocalDocsError):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+def _handle_bonate_exception(exc: Exception) -> None:
+    """Normalize Bonate Sotto connector exceptions."""
+    if isinstance(exc, BonateSottoRequestError):
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if isinstance(exc, BonateSottoParsingError):
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if isinstance(exc, BonateSottoError):
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
@@ -247,6 +270,46 @@ def local_docs_file(path: str, max_bytes: int = 1_048_576) -> dict:
     except Exception as exc:  # noqa: BLE001 - handled centrally
         _handle_docs_exception(exc)
     return {"path": path, "content": content}
+
+
+@app.get(
+    "/bonatesotto/transparency/sections",
+    response_model=BonateTransparencySectionsResponse,
+)
+def bonate_transparency_sections(q: str | None = None) -> BonateTransparencySectionsResponse:
+    """Return the Amministrazione Trasparente sections and sub links."""
+    try:
+        sections = list_transparency_sections(query=q)
+    except Exception as exc:  # noqa: BLE001 - handled centrally
+        _handle_bonate_exception(exc)
+    payload = [
+        BonateTransparencySection(category=section.category, name=section.name, url=section.url)
+        for section in sections
+    ]
+    return BonateTransparencySectionsResponse(sections=payload)
+
+
+@app.post(
+    "/bonatesotto/transparency/search",
+    response_model=BonateTransparencySearchResponse,
+)
+def bonate_transparency_search(
+    payload: BonateTransparencySearchRequest,
+) -> BonateTransparencySearchResponse:
+    """Search for a keyword inside a specific transparency section."""
+    try:
+        hits = search_section_text(
+            payload.section_url,
+            payload.query,
+            limit=payload.limit,
+        )
+    except Exception as exc:  # noqa: BLE001 - handled centrally
+        _handle_bonate_exception(exc)
+    return BonateTransparencySearchResponse(
+        section_url=payload.section_url,
+        query=payload.query,
+        hits=hits,
+    )
 
 
 @app.get("/ui/instructions")

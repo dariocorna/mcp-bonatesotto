@@ -1,4 +1,4 @@
-# Istruzioni MCP Server (Facebook, Google Drive, Docs Locali)
+# Istruzioni MCP Server (Facebook, Google Drive, Docs Locali, Bonate Sotto)
 
 Benvenuto nel server MCP personale dedicato all'integrazione con Facebook, Google Drive e alla consultazione di documentazione locale.  
 Queste istruzioni vengono distribuite insieme al codice sorgente e descrivono il comportamento base del server.  
@@ -24,6 +24,11 @@ Puoi aggiungere note operative locali tramite l'interfaccia disponibile su `/ui/
    - `GET /local-docs/file?path=sub/path.md` restituisce il contenuto UTF-8 (limite 5 MiB).
    - I percorsi sono validati per evitare traversal fuori da `DOCS_ROOT`.
    - Prima della prima esecuzione l’operatore deve leggere `@bonate init` per consultare `guidelines/index.md` e completare l’inizializzazione locale.
+
+4. **Trasparenza Comune di Bonate Sotto**
+   - Il connettore `/bonatesotto/transparency/sections` estrae le sotto-sezioni di Amministrazione Trasparente (Giunta, Determine, Bandi, ecc.).
+   - `/bonatesotto/transparency/search` permette una ricerca testuale grezza all'interno della pagina selezionata (utile per trovare link rapidi).
+   - Configura `BONATE_BASE_URL` e `BONATE_TIMEOUT` se usi mirror o se il sito ha esigenze particolari.
 
 ## Convenzioni di configurazione
 

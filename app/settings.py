@@ -19,6 +19,14 @@ class Settings(BaseSettings):
         default=None,
         description="Base directory for exposing local documentation via the API.",
     )
+    bonate_base_url: AnyHttpUrl = Field(
+        default="https://www.comune.bonatesotto.bg.it",
+        description="Base URL del sito istituzionale di Bonate Sotto.",
+    )
+    bonate_timeout: int = Field(
+        default=15,
+        description="Timeout in secondi per le richieste HTTP verso il sito istituzionale.",
+    )
 
     facebook_access_token: Optional[str] = Field(
         default=None,
@@ -114,6 +122,14 @@ class Settings(BaseSettings):
         """Ensure the download chunk size is a positive integer."""
         if value <= 0:
             raise ValueError("GOOGLE_DRIVE_DOWNLOAD_CHUNK_SIZE must be positive")
+        return value
+
+    @field_validator("bonate_timeout")
+    @classmethod
+    def validate_bonate_timeout(cls, value: int) -> int:
+        """Ensure the Bonate timeout is positive."""
+        if value <= 0:
+            raise ValueError("BONATE_TIMEOUT must be positive")
         return value
 
     class Config:
