@@ -8,6 +8,7 @@ It is inspired by the shared internal MCP server but ships with only the Faceboo
 - Retrieve feed posts with advanced filters via `POST /facebook/feed`.
 - Publish new posts (immediate or scheduled) with `POST /facebook/posts`.
 - List, download, and upload Google Drive files via `/google-drive/*` endpoints.
+- Serve combined static + local operator instructions through `/ui/instructions` (HTML) and `/api/instructions` (JSON).
 - Simple health-check endpoint available at `GET /health`.
 
 ## Getting Started

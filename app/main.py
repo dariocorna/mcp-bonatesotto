@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import base64
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 
 from .facebook_client import (
     FacebookConfigError,
@@ -200,3 +201,60 @@ def google_drive_upload_file(
     except Exception as exc:
         _handle_drive_exception(exc)
     return GoogleDriveUploadResponse(file=file_metadata)
+
+
+@app.get("/ui/instructions")
+def ui_instructions():
+    """Serve a lightweight HTML page for editing supplemental instructions."""
+    page_path = Path(__file__).resolve().parent.parent / "static" / "instructions.html"
+    return FileResponse(page_path)
+
+
+@app.get("/api/instructions")
+def get_instructions():
+    """Return the bundled static instructions alongside editable extras."""
+    import json
+
+    store = Path(".mcp_cache") / "instructions.json"
+
+    static_path = Path(__file__).resolve().parent.parent / "static" / "instructions_static.md"
+    if not static_path.exists():
+        static_path = Path(".mcp_cache") / "instructions_static.md"
+
+    try:
+        static_text = static_path.read_text(encoding="utf-8")
+    except OSError:
+        static_text = ""
+
+    extra = ""
+    if store.exists():
+        try:
+            payload = json.loads(store.read_text(encoding="utf-8"))
+            extra = payload.get("extra") or payload.get("instructions") or ""
+        except (OSError, json.JSONDecodeError):
+            extra = ""
+
+    return {"static": static_text, "extra": extra}
+
+
+@app.post("/api/instructions")
+def post_instructions(payload: dict):
+    """Persist editable instructions to the cache directory."""
+    import json
+
+    if not isinstance(payload, dict) or "extra" not in payload:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing 'extra' field; post JSON like {'extra': '...'}",
+        )
+
+    store = Path(".mcp_cache") / "instructions.json"
+    try:
+        store.write_text(
+            json.dumps({"extra": payload.get("extra")}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"status": "ok"}
