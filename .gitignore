@@ -3,3 +3,5 @@ __pycache__/
 .mcp_cache/
 .venv/
 *.log
+*.pyc
+*.pid
