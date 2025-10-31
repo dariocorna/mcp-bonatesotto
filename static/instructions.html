@@ -77,6 +77,15 @@
       </section>
 
       <section>
+        <h2>Istruzioni statiche</h2>
+        <p>
+          Contenuto distribuito con il codice sorgente (solo lettura). Modifica il file
+          <code>static/instructions_static.md</code> per aggiornare questa sezione.
+        </p>
+        <pre id="static-docs">Loading...</pre>
+      </section>
+
+      <section>
         <h2>Note locali</h2>
         <p>Modifica il testo e premi salva per aggiornare le istruzioni extra.</p>
         <textarea id="instructions" placeholder="Scrivi qui le tue note aggiuntive...">Loading...</textarea>
@@ -95,9 +104,11 @@
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const j = await r.json();
           document.getElementById('instructions').value = j.extra || '';
+          document.getElementById('static-docs').textContent = j.static || '(nessun contenuto statico trovato)';
         } catch (err) {
           document.getElementById('status').textContent = `Errore nel caricamento: ${err.message}`;
           document.getElementById('instructions').value = '';
+          document.getElementById('static-docs').textContent = '(errore nel caricamento del contenuto statico)';
         }
       }
 

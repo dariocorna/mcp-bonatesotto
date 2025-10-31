@@ -1,6 +1,6 @@
-# Istruzioni MCP Server (Facebook & Google Drive)
+# Istruzioni MCP Server (Facebook, Google Drive, Docs Locali)
 
-Benvenuto nel server MCP personale dedicato all'integrazione con Facebook e Google Drive.  
+Benvenuto nel server MCP personale dedicato all'integrazione con Facebook, Google Drive e alla consultazione di documentazione locale.  
 Queste istruzioni vengono distribuite insieme al codice sorgente e descrivono il comportamento base del server.  
 Puoi aggiungere note operative locali tramite l'interfaccia disponibile su `/ui/instructions`.
 
@@ -18,10 +18,18 @@ Puoi aggiungere note operative locali tramite l'interfaccia disponibile su `/ui/
    - `POST /google-drive/files/upload` per caricare file nelle cartelle condivise o Shared Drive accessibili.
    - Configurare `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` e altri parametri nel file `.env`.
 
+3. **Documentazione locale**
+   - Configura `DOCS_ROOT` nel file `.env` (default consigliato: `~/devel/docs-dario`).
+   - `GET /local-docs/tree?path=...` elenca sottocartelle e file testuali.
+   - `GET /local-docs/file?path=sub/path.md` restituisce il contenuto UTF-8 (limite 5 MiB).
+   - I percorsi sono validati per evitare traversal fuori da `DOCS_ROOT`.
+   - Prima della prima esecuzione l’operatore deve leggere `@bonate init` per consultare `guidelines/index.md` e completare l’inizializzazione locale.
+
 ## Convenzioni di configurazione
 
-- Mantieni `.mcp_cache/` presente e scrivibile: il server lo usa per memorizzare cache e note locali.
+- Mantieni `.mcp_cache/` presente e scrivibile: il server lo usa per memorizzare cache, indici e note locali.
 - Le variabili presenti in `config.example.env` rappresentano il minimo necessario per produzione.
+- Assicurati che `DOCS_ROOT` punti a una cartella esistente e leggibile dal server prima di usare `/local-docs/*`.
 - Hydra/daemon script: eseguire `./mcp-daemon.sh start` per avviare il server in background (richiede virtualenv).
 
 ## Controllo stato e supporto

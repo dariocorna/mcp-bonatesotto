@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import List, Optional
 
 from pydantic import AnyHttpUrl, Field, field_validator
@@ -13,6 +14,11 @@ class Settings(BaseSettings):
 
     host: str = Field(default="127.0.0.1", description="IPv4/IPv6 interface to bind the server to.")
     port: int = Field(default=8000, description="Port for the FastAPI application.")
+
+    docs_root: Optional[Path] = Field(
+        default=None,
+        description="Base directory for exposing local documentation via the API.",
+    )
 
     facebook_access_token: Optional[str] = Field(
         default=None,
@@ -59,6 +65,16 @@ class Settings(BaseSettings):
         default=4 * 1024 * 1024,
         description="Chunk size in bytes for Drive file downloads.",
     )
+
+    @field_validator("docs_root", mode="before")
+    @classmethod
+    def expand_docs_root(cls, value: str | Path | None) -> Optional[Path]:
+        """Expand environment variables and ~ for docs_root."""
+        if value is None or value == "":
+            return None
+        if isinstance(value, Path):
+            return value.expanduser().resolve()
+        return Path(value).expanduser().resolve()
 
     @field_validator("facebook_timeout")
     @classmethod

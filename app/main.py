@@ -23,6 +23,14 @@ from .google_drive_client import (
     list_files as drive_list_files,
     upload_file as drive_upload_file,
 )
+from .local_docs import (
+    LocalDocsConfigError,
+    LocalDocsError,
+    LocalDocsNotFoundError,
+    LocalDocsPermissionError,
+    list_entries as docs_list_entries,
+    read_file as docs_read_file,
+)
 from .models import (
     FacebookCreatePostRequest,
     FacebookCreatePostResponse,
@@ -77,6 +85,19 @@ def _handle_drive_exception(exc: Exception) -> None:
         if exc.details:
             detail["details"] = exc.details
         raise HTTPException(status_code=exc.status_code or 502, detail=detail) from exc
+    raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+def _handle_docs_exception(exc: Exception) -> None:
+    """Normalize local docs exceptions to HTTP errors."""
+    if isinstance(exc, LocalDocsConfigError):
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if isinstance(exc, LocalDocsPermissionError):
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    if isinstance(exc, LocalDocsNotFoundError):
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if isinstance(exc, LocalDocsError):
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
@@ -201,6 +222,31 @@ def google_drive_upload_file(
     except Exception as exc:
         _handle_drive_exception(exc)
     return GoogleDriveUploadResponse(file=file_metadata)
+
+
+@app.get("/local-docs/tree")
+def local_docs_tree(path: str = "") -> dict:
+    """List directories and files under the configured DOCS_ROOT."""
+    try:
+        entries = docs_list_entries(path)
+    except Exception as exc:  # noqa: BLE001 - handled centrally
+        _handle_docs_exception(exc)
+    return {"path": path or ".", "entries": entries}
+
+
+@app.get("/local-docs/file")
+def local_docs_file(path: str, max_bytes: int = 1_048_576) -> dict:
+    """Return the textual content of a file stored under DOCS_ROOT."""
+    if max_bytes < 1 or max_bytes > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=400,
+            detail="max_bytes must be between 1 and 5242880 bytes.",
+        )
+    try:
+        content = docs_read_file(path, max_bytes=max_bytes)
+    except Exception as exc:  # noqa: BLE001 - handled centrally
+        _handle_docs_exception(exc)
+    return {"path": path, "content": content}
 
 
 @app.get("/ui/instructions")

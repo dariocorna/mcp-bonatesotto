@@ -9,6 +9,7 @@ It is inspired by the shared internal MCP server but ships with only the Faceboo
 - Publish new posts (immediate or scheduled) with `POST /facebook/posts`.
 - List, download, and upload Google Drive files via `/google-drive/*` endpoints.
 - Serve combined static + local operator instructions through `/ui/instructions` (HTML) and `/api/instructions` (JSON).
+- Browse local reference documents under `DOCS_ROOT` via `/local-docs/*` endpoints.
 - Simple health-check endpoint available at `GET /health`.
 
 ## Getting Started
@@ -45,6 +46,7 @@ All settings can be provided through `.env` or the environment:
 | `FACEBOOK_DEFAULT_FIELDS` | Comma separated default fields when none are provided. |
 | `FACEBOOK_DEFAULT_FEED_LIMIT` | Default feed page size (default `25`, max `100`). |
 | `FACEBOOK_ENABLE_DEBUG` | Set to `true` to enable verbose logging for troubleshooting. |
+| `DOCS_ROOT` | Absolute path to the local documentation directory exposed via `/local-docs/*`. |
 | `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` | Path to the JSON key for a Google service account with Drive access. |
 | `GOOGLE_DRIVE_DELEGATED_USER` | Optional user to impersonate when using domain-wide delegation. |
 | `GOOGLE_DRIVE_SCOPES` | JSON array of Drive scopes (default `["https://www.googleapis.com/auth/drive"]`). |
@@ -101,7 +103,17 @@ curl -X POST http://127.0.0.1:8000/google-drive/files/upload \
   }'
 ```
 
+List local documentation folders:
+```bash
+curl "http://127.0.0.1:8000/local-docs/tree"
+```
+
+Read a markdown file from docs:
+```bash
+curl "http://127.0.0.1:8000/local-docs/file?path=guides/readme.md"
+```
+
 ## Development Notes
 - The `.mcp_cache` directory is automatically created to mirror the structure of the original MCP server.
 - To run the application in production, consider invoking `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
-- The project bundles Facebook and Google Drive connectors; additional integrations can be added following the same patterns.
+- The project bundles Facebook, Google Drive, and local docs connectors; additional integrations can be added following the same patterns.
