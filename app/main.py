@@ -39,6 +39,7 @@ from .local_docs import (
     list_entries as docs_list_entries,
     read_file as docs_read_file,
 )
+from .settings import settings
 from .models import (
     FacebookCreatePostRequest,
     FacebookCreatePostResponse,
