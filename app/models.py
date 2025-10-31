@@ -117,3 +117,93 @@ class FacebookCreatePostResponse(BaseModel):
         default_factory=dict,
         description="Unmodified payload returned by the Graph API.",
     )
+
+
+class GoogleDriveListFilesRequest(BaseModel):
+    """Request payload for listing Google Drive files."""
+
+    query: Optional[str] = Field(
+        default=None,
+        description="Advanced search query per Google Drive API syntax.",
+    )
+    page_size: int = Field(
+        default=20,
+        ge=1,
+        le=1000,
+        description="Maximum number of files to return in a single request.",
+    )
+    page_token: Optional[str] = Field(
+        default=None,
+        description="Token for fetching the next page of results.",
+    )
+    fields: Optional[str] = Field(
+        default=None,
+        description="Custom fields to request from the Drive API; defaults to a useful subset.",
+    )
+    order_by: Optional[str] = Field(
+        default=None,
+        description="Sort expression, e.g. `modifiedTime desc`.",
+    )
+    spaces: Optional[str] = Field(
+        default="drive",
+        description="Comma separated list of spaces to query, e.g. `drive,appDataFolder`.",
+    )
+    include_trashed: bool = Field(
+        default=False,
+        description="Include items that are in the trash.",
+    )
+
+
+class GoogleDriveListFilesResponse(BaseModel):
+    """Response wrapper for Google Drive file listings."""
+
+    files: List[Dict[str, Any]] = Field(default_factory=list)
+    next_page_token: Optional[str] = Field(default=None, description="Token for fetching the next result page.")
+
+
+class GoogleDriveDownloadRequest(BaseModel):
+    """Request payload for downloading a specific Drive file."""
+
+    file_id: str = Field(..., description="Identifier of the file to download.", min_length=1)
+
+
+class GoogleDriveDownloadResponse(BaseModel):
+    """Response payload containing a downloaded Drive file."""
+
+    file_id: str = Field(..., description="Identifier of the downloaded file.")
+    name: Optional[str] = Field(default=None, description="Original filename as stored in Drive.")
+    mime_type: Optional[str] = Field(default=None, description="MIME type reported by Drive.")
+    size: Optional[str] = Field(default=None, description="File size in bytes if known.")
+    md5_checksum: Optional[str] = Field(
+        default=None,
+        description="MD5 checksum provided by Drive, useful for integrity checks.",
+    )
+    content_base64: str = Field(..., description="Base64 encoded file contents.")
+
+
+class GoogleDriveUploadRequest(BaseModel):
+    """Request payload for uploading a new file to Drive."""
+
+    name: str = Field(..., description="Destination filename.", min_length=1)
+    content_base64: str = Field(
+        ...,
+        description="Base64 encoded content to upload.",
+    )
+    mime_type: Optional[str] = Field(
+        default=None,
+        description="MIME type of the uploaded file.",
+    )
+    parents: Optional[List[str]] = Field(
+        default=None,
+        description="List of parent folder IDs. Defaults to the account's root.",
+    )
+    make_public: bool = Field(
+        default=False,
+        description="Whether to create a public read-only link for the uploaded file.",
+    )
+
+
+class GoogleDriveUploadResponse(BaseModel):
+    """Response payload returned after uploading a file to Drive."""
+
+    file: Dict[str, Any]

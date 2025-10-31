@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -14,6 +15,13 @@ from .facebook_client import (
     fetch_profile,
     get_feed,
 )
+from .google_drive_client import (
+    GoogleDriveConfigError,
+    GoogleDriveRequestError,
+    download_file as drive_download_file,
+    list_files as drive_list_files,
+    upload_file as drive_upload_file,
+)
 from .models import (
     FacebookCreatePostRequest,
     FacebookCreatePostResponse,
@@ -21,6 +29,12 @@ from .models import (
     FacebookFeedResponse,
     FacebookProfileRequest,
     FacebookProfileResponse,
+    GoogleDriveDownloadRequest,
+    GoogleDriveDownloadResponse,
+    GoogleDriveListFilesRequest,
+    GoogleDriveListFilesResponse,
+    GoogleDriveUploadRequest,
+    GoogleDriveUploadResponse,
     HealthResponse,
 )
 app = FastAPI(title="Personal Facebook MCP Server")
@@ -46,6 +60,18 @@ def _handle_facebook_exception(exc: Exception) -> None:
     if isinstance(exc, FacebookConfigError):
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     if isinstance(exc, FacebookRequestError):
+        detail = {"message": exc.message}
+        if exc.details:
+            detail["details"] = exc.details
+        raise HTTPException(status_code=exc.status_code or 502, detail=detail) from exc
+    raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+def _handle_drive_exception(exc: Exception) -> None:
+    """Normalize Google Drive exceptions to HTTP errors."""
+    if isinstance(exc, GoogleDriveConfigError):
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    if isinstance(exc, GoogleDriveRequestError):
         detail = {"message": exc.message}
         if exc.details:
             detail["details"] = exc.details
@@ -109,3 +135,68 @@ def facebook_create_post(
             detail={"message": "Facebook API returned an unexpected response."},
         )
     return FacebookCreatePostResponse(id=post_id, raw=result)
+
+
+@app.post("/google-drive/files", response_model=GoogleDriveListFilesResponse)
+def google_drive_list_files(
+    request: GoogleDriveListFilesRequest,
+) -> GoogleDriveListFilesResponse:
+    """List files accessible to the configured Google Drive credentials."""
+    try:
+        result = drive_list_files(
+            query=request.query,
+            page_size=request.page_size,
+            page_token=request.page_token,
+            fields=request.fields,
+            order_by=request.order_by,
+            spaces=request.spaces,
+            include_trashed=request.include_trashed,
+        )
+    except Exception as exc:
+        _handle_drive_exception(exc)
+    files = result.get("files", []) if isinstance(result, dict) else []
+    next_token = result.get("nextPageToken") if isinstance(result, dict) else None
+    return GoogleDriveListFilesResponse(files=files, next_page_token=next_token)
+
+
+@app.post("/google-drive/files/download", response_model=GoogleDriveDownloadResponse)
+def google_drive_download_file(
+    request: GoogleDriveDownloadRequest,
+) -> GoogleDriveDownloadResponse:
+    """Download the content of a Google Drive file."""
+    try:
+        metadata, content = drive_download_file(request.file_id)
+    except Exception as exc:
+        _handle_drive_exception(exc)
+    encoded = base64.b64encode(content).decode("ascii")
+    return GoogleDriveDownloadResponse(
+        file_id=metadata.get("id", request.file_id),
+        name=metadata.get("name"),
+        mime_type=metadata.get("mimeType"),
+        size=metadata.get("size"),
+        md5_checksum=metadata.get("md5Checksum"),
+        content_base64=encoded,
+    )
+
+
+@app.post("/google-drive/files/upload", response_model=GoogleDriveUploadResponse, status_code=201)
+def google_drive_upload_file(
+    request: GoogleDriveUploadRequest,
+) -> GoogleDriveUploadResponse:
+    """Upload a new file to Google Drive."""
+    try:
+        data = base64.b64decode(request.content_base64.encode("ascii"), validate=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="content_base64 is not valid Base64 data.") from exc
+
+    try:
+        file_metadata = drive_upload_file(
+            name=request.name,
+            data=data,
+            mime_type=request.mime_type,
+            parents=request.parents,
+            make_public=request.make_public,
+        )
+    except Exception as exc:
+        _handle_drive_exception(exc)
+    return GoogleDriveUploadResponse(file=file_metadata)

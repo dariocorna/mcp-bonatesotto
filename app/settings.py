@@ -43,6 +43,23 @@ class Settings(BaseSettings):
         description="Enable verbose logging of Facebook requests and responses.",
     )
 
+    google_drive_service_account_file: Optional[str] = Field(
+        default=None,
+        description="Path to the Google service account JSON credentials file.",
+    )
+    google_drive_delegated_user: Optional[str] = Field(
+        default=None,
+        description="Optional user to impersonate when using domain-wide delegation.",
+    )
+    google_drive_scopes: List[str] = Field(
+        default_factory=lambda: ["https://www.googleapis.com/auth/drive"],
+        description="OAuth scopes requested for Google Drive access.",
+    )
+    google_drive_download_chunk_size: int = Field(
+        default=4 * 1024 * 1024,
+        description="Chunk size in bytes for Drive file downloads.",
+    )
+
     @field_validator("facebook_timeout")
     @classmethod
     def validate_timeout(cls, value: int) -> int:
@@ -68,6 +85,20 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [part.strip() for part in value.split(",") if part.strip()]
         return list(value)
+
+    @field_validator("google_drive_scopes", mode="before")
+    @classmethod
+    def parse_google_scope_list(cls, value: str | List[str] | None) -> List[str]:
+        """Support comma separated scope lists."""
+        return cls.parse_field_list(value)
+
+    @field_validator("google_drive_download_chunk_size")
+    @classmethod
+    def validate_drive_chunk_size(cls, value: int) -> int:
+        """Ensure the download chunk size is a positive integer."""
+        if value <= 0:
+            raise ValueError("GOOGLE_DRIVE_DOWNLOAD_CHUNK_SIZE must be positive")
+        return value
 
     class Config:
         env_file = ".env"

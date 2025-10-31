@@ -1,12 +1,13 @@
 # MCP Server Dario
 
-Personal MCP server that exposes a minimal FastAPI application focused on a Facebook Graph API connector.  
-It is inspired by the shared internal MCP server but ships with only the Facebook integration to keep things lean for personal usage.
+Personal MCP server that exposes a minimal FastAPI application focused on a Facebook Graph API connector and Google Drive utilities.  
+It is inspired by the shared internal MCP server but ships with only the Facebook and Drive integrations to keep things lean for personal usage.
 
 ## Features
 - Fetch profile or page information via `POST /facebook/profile`.
 - Retrieve feed posts with advanced filters via `POST /facebook/feed`.
 - Publish new posts (immediate or scheduled) with `POST /facebook/posts`.
+- List, download, and upload Google Drive files via `/google-drive/*` endpoints.
 - Simple health-check endpoint available at `GET /health`.
 
 ## Getting Started
@@ -43,6 +44,10 @@ All settings can be provided through `.env` or the environment:
 | `FACEBOOK_DEFAULT_FIELDS` | Comma separated default fields when none are provided. |
 | `FACEBOOK_DEFAULT_FEED_LIMIT` | Default feed page size (default `25`, max `100`). |
 | `FACEBOOK_ENABLE_DEBUG` | Set to `true` to enable verbose logging for troubleshooting. |
+| `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` | Path to the JSON key for a Google service account with Drive access. |
+| `GOOGLE_DRIVE_DELEGATED_USER` | Optional user to impersonate when using domain-wide delegation. |
+| `GOOGLE_DRIVE_SCOPES` | JSON array of Drive scopes (default `["https://www.googleapis.com/auth/drive"]`). |
+| `GOOGLE_DRIVE_DOWNLOAD_CHUNK_SIZE` | Chunk size in bytes for Drive downloads (default `4194304`). |
 
 ## Example Requests
 
@@ -70,7 +75,32 @@ curl -X POST http://127.0.0.1:8000/facebook/posts \
   }'
 ```
 
+List Drive files:
+```bash
+curl -X POST http://127.0.0.1:8000/google-drive/files \
+  -H "Content-Type: application/json" \
+  -d '{"page_size": 10}'
+```
+
+Download a Drive file (Base64 payload in the response):
+```bash
+curl -X POST http://127.0.0.1:8000/google-drive/files/download \
+  -H "Content-Type: application/json" \
+  -d '{"file_id": "your-file-id"}'
+```
+
+Upload a Drive file from local data:
+```bash
+curl -X POST http://127.0.0.1:8000/google-drive/files/upload \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "hello.txt",
+    "mime_type": "text/plain",
+    "content_base64": "SGVsbG8gR29vZ2xlIERyaXZlIQ=="
+  }'
+```
+
 ## Development Notes
 - The `.mcp_cache` directory is automatically created to mirror the structure of the original MCP server.
 - To run the application in production, consider invoking `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
-- No other connectors are bundled; the project is intentionally focused on Facebook only.
+- The project bundles Facebook and Google Drive connectors; additional integrations can be added following the same patterns.
