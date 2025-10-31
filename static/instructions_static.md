@@ -16,6 +16,7 @@ Puoi aggiungere note operative locali tramite l'interfaccia disponibile su `/ui/
    - `POST /google-drive/files` per elencare file visibili con il service account.
    - `POST /google-drive/files/download` per scaricare contenuti (risposta base64).
    - `POST /google-drive/files/upload` per caricare file nelle cartelle condivise o Shared Drive accessibili.
+   - I documenti Google (Docs, Sheets, Slides) vengono esportati automaticamente in formati testuali (plain text / CSV) con indicazione di MIME originale.
    - Configurare `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` e altri parametri nel file `.env`.
 
 3. **Documentazione locale**
@@ -29,6 +30,11 @@ Puoi aggiungere note operative locali tramite l'interfaccia disponibile su `/ui/
    - Il connettore `/bonatesotto/transparency/sections` estrae le sotto-sezioni di Amministrazione Trasparente (Giunta, Determine, Bandi, ecc.).
    - `/bonatesotto/transparency/search` permette una ricerca testuale grezza all'interno della pagina selezionata (utile per trovare link rapidi).
    - Configura `BONATE_BASE_URL` e `BONATE_TIMEOUT` se usi mirror o se il sito ha esigenze particolari.
+
+5. **Ricerca vettoriale Drive**
+   - Abilita `DRIVE_VECTOR_ENABLED=true` e fornisci i percorsi `DRIVE_VECTOR_EMBEDDINGS_PATH`, `DRIVE_VECTOR_METADATA_PATH`, `DRIVE_VECTOR_DOCUMENTS_PATH` per caricare l'indice.
+    - `/google-drive/vector-search` accetta una query testuale (se è configurato `DRIVE_VECTOR_MODEL_NAME`) oppure un embedding numerico (`query_embedding`) e restituisce i documenti più affini.
+   - Il formato atteso degli artifact corrisponde a quelli generati da `scripts/build_drive_vector_db.py` nel repo di harvesting.
 
 ## Convenzioni di configurazione
 

@@ -16,6 +16,15 @@ from .settings import settings
 # Cached Drive service instance reused across requests.
 _drive_service = None
 
+# Mapping for Google Workspace document exports; defaults to plain text when suitable.
+GOOGLE_DOC_EXPORT_MIME = {
+    "application/vnd.google-apps.document": "text/plain",
+    "application/vnd.google-apps.spreadsheet": "text/csv",
+    "application/vnd.google-apps.presentation": "text/plain",
+    "application/vnd.google-apps.drawing": "image/png",
+    "application/vnd.google-apps.site": "text/plain",
+}
+
 
 class GoogleDriveConfigError(RuntimeError):
     """Raised when the Google Drive integration is missing configuration."""
@@ -134,7 +143,18 @@ def download_file(file_id: str) -> Tuple[Dict[str, Any], bytes]:
             fields="id, name, mimeType, size, modifiedTime, md5Checksum",
             supportsAllDrives=True,
         ).execute()
-        request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
+        mime_type = metadata.get("mimeType")
+        export_mime = GOOGLE_DOC_EXPORT_MIME.get(mime_type)
+        if export_mime:
+            request = service.files().export_media(
+                fileId=file_id,
+                mimeType=export_mime,
+            )
+            metadata = dict(metadata)
+            metadata["exportedMimeType"] = export_mime
+            metadata["originalMimeType"] = mime_type
+        else:
+            request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
         buffer = io.BytesIO()
         downloader = MediaIoBaseDownload(
             buffer,

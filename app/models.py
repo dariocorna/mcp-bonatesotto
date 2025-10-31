@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import AnyHttpUrl, BaseModel, Field, HttpUrl
+from pydantic import AnyHttpUrl, BaseModel, Field, HttpUrl, field_validator
 
 
 class HealthResponse(BaseModel):
@@ -245,3 +245,50 @@ class BonateTransparencySearchResponse(BaseModel):
     section_url: AnyHttpUrl = Field(..., description="Sezione su cui è stata effettuata la ricerca.")
     query: str = Field(..., description="Testo ricercato.")
     hits: List[str] = Field(default_factory=list, description="Estratti di testo che contengono la query.")
+
+
+class DriveVectorSearchRequest(BaseModel):
+    """Request payload for Drive vector search."""
+
+    query: Optional[str] = Field(
+        default=None,
+        description="Testo da trasformare in embedding per la ricerca (richiede un modello configurato).",
+        min_length=1,
+    )
+    query_embedding: Optional[List[float]] = Field(
+        default=None,
+        description="Embedding pre-calcolato della query. Usa questo campo se non vuoi caricare un modello sul server.",
+    )
+    limit: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=50,
+        description="Numero massimo di risultati da restituire (default: DRIVE_VECTOR_DEFAULT_K).",
+    )
+
+    @field_validator("query_embedding")
+    @classmethod
+    def validate_query_input(cls, value: Optional[List[float]], info):
+        """Ensure at least one of query or embedding is provided."""
+        query = info.data.get("query")
+        if (value is None or len(value) == 0) and (query is None or query.strip() == ""):
+            raise ValueError("Fornire almeno 'query' o 'query_embedding'.")
+        return value
+
+
+class DriveVectorSearchHit(BaseModel):
+    """Single result from the vector search."""
+
+    score: float = Field(..., description="Similarità coseno normalizzata (1.0 massimo).")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadati originali del documento.")
+    text_extract: Optional[str] = Field(
+        default=None,
+        description="Estratto testuale del documento (se disponibile).",
+    )
+
+
+class DriveVectorSearchResponse(BaseModel):
+    """Response payload for Drive vector search."""
+
+    query: Optional[str] = None
+    hits: List[DriveVectorSearchHit] = Field(default_factory=list)

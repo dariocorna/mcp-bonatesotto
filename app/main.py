@@ -54,9 +54,18 @@ from .models import (
     BonateTransparencySearchResponse,
     BonateTransparencySectionsResponse,
     BonateTransparencySection,
+    DriveVectorSearchRequest,
+    DriveVectorSearchResponse,
+    DriveVectorSearchHit,
     GoogleDriveUploadRequest,
     GoogleDriveUploadResponse,
     HealthResponse,
+)
+from .vector_store import (
+    DriveVectorStoreConfigError,
+    DriveVectorStoreError,
+    DriveVectorStoreNotAvailable,
+    get_drive_vector_store,
 )
 app = FastAPI(title="Personal Facebook MCP Server")
 
@@ -120,6 +129,17 @@ def _handle_bonate_exception(exc: Exception) -> None:
     if isinstance(exc, BonateSottoParsingError):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     if isinstance(exc, BonateSottoError):
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+def _handle_drive_vector_exception(exc: Exception) -> None:
+    """Normalize Drive vector store errors."""
+    if isinstance(exc, DriveVectorStoreNotAvailable):
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if isinstance(exc, DriveVectorStoreConfigError):
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if isinstance(exc, DriveVectorStoreError):
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -310,6 +330,34 @@ def bonate_transparency_search(
         query=payload.query,
         hits=hits,
     )
+
+
+@app.post("/google-drive/vector-search", response_model=DriveVectorSearchResponse)
+def google_drive_vector_search(
+    payload: DriveVectorSearchRequest,
+) -> DriveVectorSearchResponse:
+    """Perform a vector similarity search over Drive document embeddings."""
+    try:
+        store = get_drive_vector_store()
+        limit = payload.limit or settings.drive_vector_default_k
+        results = store.search(
+            query=payload.query,
+            query_embedding=payload.query_embedding,
+            top_k=limit,
+        )
+    except Exception as exc:  # noqa: BLE001 - handled centrally
+        _handle_drive_vector_exception(exc)
+
+    hits: list[DriveVectorSearchHit] = []
+    for score, record in results:
+        hits.append(
+            DriveVectorSearchHit(
+                score=float(score),
+                metadata=record.metadata,
+                text_extract=record.text_extract,
+            )
+        )
+    return DriveVectorSearchResponse(query=payload.query, hits=hits)
 
 
 @app.get("/ui/instructions")

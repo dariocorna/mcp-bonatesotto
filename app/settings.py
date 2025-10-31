@@ -73,11 +73,50 @@ class Settings(BaseSettings):
         default=4 * 1024 * 1024,
         description="Chunk size in bytes for Drive file downloads.",
     )
+    drive_vector_enabled: bool = Field(
+        default=False,
+        description="Abilita il caricamento dell'indice vettoriale per i documenti Drive.",
+    )
+    drive_vector_embeddings_path: Optional[Path] = Field(
+        default=None,
+        description="Percorso al file .npy con gli embedding dei documenti Drive.",
+    )
+    drive_vector_metadata_path: Optional[Path] = Field(
+        default=None,
+        description="Percorso al file JSON con i metadati dei documenti Drive.",
+    )
+    drive_vector_documents_path: Optional[Path] = Field(
+        default=None,
+        description="Percorso al file JSONL con gli estratti testuali dei documenti Drive.",
+    )
+    drive_vector_model_name: Optional[str] = Field(
+        default=None,
+        description="Nome del modello SentenceTransformers usato per codificare le query (opzionale se si forniscono embedding espliciti).",
+    )
+    drive_vector_default_k: int = Field(
+        default=5,
+        description="Numero massimo di risultati restituiti di default per la ricerca vettoriale.",
+    )
 
     @field_validator("docs_root", mode="before")
     @classmethod
     def expand_docs_root(cls, value: str | Path | None) -> Optional[Path]:
         """Expand environment variables and ~ for docs_root."""
+        if value is None or value == "":
+            return None
+        if isinstance(value, Path):
+            return value.expanduser().resolve()
+        return Path(value).expanduser().resolve()
+
+    @field_validator(
+        "drive_vector_embeddings_path",
+        "drive_vector_metadata_path",
+        "drive_vector_documents_path",
+        mode="before",
+    )
+    @classmethod
+    def expand_drive_vector_paths(cls, value: str | Path | None) -> Optional[Path]:
+        """Normalize drive vector store paths."""
         if value is None or value == "":
             return None
         if isinstance(value, Path):
@@ -130,6 +169,14 @@ class Settings(BaseSettings):
         """Ensure the Bonate timeout is positive."""
         if value <= 0:
             raise ValueError("BONATE_TIMEOUT must be positive")
+        return value
+
+    @field_validator("drive_vector_default_k")
+    @classmethod
+    def validate_drive_vector_k(cls, value: int) -> int:
+        """Ensure the default top-k is positive."""
+        if value <= 0:
+            raise ValueError("DRIVE_VECTOR_DEFAULT_K must be positive")
         return value
 
     class Config:

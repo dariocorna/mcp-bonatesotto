@@ -11,6 +11,7 @@ It is inspired by the shared internal MCP server but ships with only the Faceboo
 - Serve combined static + local operator instructions through `/ui/instructions` (HTML) and `/api/instructions` (JSON).
 - Browse local reference documents under `DOCS_ROOT` via `/local-docs/*` endpoints.
 - Explore Amministrazione Trasparente sections for Comune di Bonate Sotto with `/bonatesotto/transparency/*`.
+- Search Drive documents semantically using a pre-built vector index via `/google-drive/vector-search`.
 - Simple health-check endpoint available at `GET /health`.
 
 ## Getting Started
@@ -54,6 +55,12 @@ All settings can be provided through `.env` or the environment:
 | `GOOGLE_DRIVE_DELEGATED_USER` | Optional user to impersonate when using domain-wide delegation. |
 | `GOOGLE_DRIVE_SCOPES` | JSON array of Drive scopes (default `["https://www.googleapis.com/auth/drive"]`). |
 | `GOOGLE_DRIVE_DOWNLOAD_CHUNK_SIZE` | Chunk size in bytes for Drive downloads (default `4194304`). |
+| `DRIVE_VECTOR_ENABLED` | Set to `true` to enable the Drive vector search endpoints. |
+| `DRIVE_VECTOR_EMBEDDINGS_PATH` | Path to the `.npy` file containing Drive document embeddings. |
+| `DRIVE_VECTOR_METADATA_PATH` | Path to the JSON file containing Drive document metadata. |
+| `DRIVE_VECTOR_DOCUMENTS_PATH` | Path to the JSONL file with text extracts for Drive documents. |
+| `DRIVE_VECTOR_MODEL_NAME` | Optional sentence-transformer model for query encoding (e.g. `sentence-transformers/all-MiniLM-L6-v2`). |
+| `DRIVE_VECTOR_DEFAULT_K` | Default number of hits returned by vector search (default `5`). |
 
 ## Example Requests
 
@@ -132,7 +139,28 @@ curl -X POST http://127.0.0.1:8000/bonatesotto/transparency/search \
   }'
 ```
 
+Drive vector search (testo):
+```bash
+curl -X POST http://127.0.0.1:8000/google-drive/vector-search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "piano di gestione del Parco Brolo",
+    "limit": 5
+  }'
+```
+
+Drive vector search (embedding pre-calcolato):
+```bash
+curl -X POST http://127.0.0.1:8000/google-drive/vector-search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_embedding": [0.12, -0.04, ...],
+    "limit": 3
+  }'
+```
+
 ## Development Notes
 - The `.mcp_cache` directory is automatically created to mirror the structure of the original MCP server.
 - To run the application in production, consider invoking `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
-- The project bundles Facebook, Google Drive, local docs, and Bonate Sotto transparency helpers; additional integrations can be added following the same patterns.
+- Google Workspace document types (Docs, Sheets, Slides) are exported automatically (plain text/CSV) and the response includes `originalMimeType`/`exportedMimeType` metadata.
+- The project bundles Facebook, Google Drive, local docs, Bonate Sotto transparency helpers, and optional Drive vector search; additional integrations can be added following the same patterns.
